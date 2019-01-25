@@ -782,9 +782,15 @@ QString CDidlItem::genre () const
   return m_d->m_elems.value ("upnp:genre").value ();
 }
 
-QString CDidlItem::date () const
+QDateTime CDidlItem::date () const
 {
-  return m_d->m_elems.value ("dc:date").value ();
+	// Note: Hacked for fetchtv program
+	if ( m_d->m_elems.value("dc:date").isEmpty() ) {
+		return QDateTime::fromString(m_d->m_elems.value("recordedStartDateTime").value (), "dddd dd MMMM yyyy hh:mm A");
+	} else {
+		return QDateTime::fromString(m_d->m_elems.value("dc:date").value ());
+	}
+
 }
 
 QString CDidlItem::duration (int index) const

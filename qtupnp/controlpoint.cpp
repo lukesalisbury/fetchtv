@@ -839,76 +839,76 @@ QString CControlPoint::deviceUUID (QString const & uri, CDevice::EType type) con
 
 void CControlPoint::loadPlugins ()
 {
-  QString appFolder = ::applicationFolder ();
-  QDir    folder (appFolder);
-  if (folder.exists () && folder.cd ("plugins"))
-  {
-    QStringList            names = folder.entryList (QDir::Files | QDir::NoDotAndDotDot);
-    QMap<QString, QString> files;
-    foreach (QString const & name, names)
-    {
-      QString   filePath = folder.absoluteFilePath (name);
-      QFileInfo fi (filePath);
-      if (!fi.isSymLink ())
-      {
-        QString suffix = fi.suffix ().toLower ();
-        if (suffix == "so" || suffix.toLower () == "dll")
-        { // It is .dll or .so files.
-          QFunctionPointer fct = QLibrary::resolve (filePath, "pluginObject");
-          if (fct != nullptr)
-          {
-            CPlugin::TFctPluginObject pluginObject = reinterpret_cast<CPlugin::TFctPluginObject>(fct);
-            CPlugin*                  plugin       = (*pluginObject) ();
-            if (plugin != nullptr)
-            {
-              plugin->setName (fi.baseName ());
-              QString const & uuid = plugin->uuid ();
-              m_plugins.insert (uuid, plugin);
-              files.insert (uuid, filePath);
-              break;
-            }
-          }
-        }
-      }
-    }
+//  QString appFolder = ::applicationFolder ();
+//  QDir    folder (appFolder);
+//  if (folder.exists () && folder.cd ("plugins"))
+//  {
+//    QStringList            names = folder.entryList (QDir::Files | QDir::NoDotAndDotDot);
+//    QMap<QString, QString> files;
+//    foreach (QString const & name, names)
+//    {
+//      QString   filePath = folder.absoluteFilePath (name);
+//      QFileInfo fi (filePath);
+//      if (!fi.isSymLink ())
+//      {
+//        QString suffix = fi.suffix ().toLower ();
+//        if (suffix == "so" || suffix.toLower () == "dll")
+//        { // It is .dll or .so files.
+//          QFunctionPointer fct = QLibrary::resolve (filePath, "pluginObject");
+//          if (fct != nullptr)
+//          {
+//            CPlugin::TFctPluginObject pluginObject = reinterpret_cast<CPlugin::TFctPluginObject>(fct);
+//            CPlugin*                  plugin       = (*pluginObject) ();
+//            if (plugin != nullptr)
+//            {
+//              plugin->setName (fi.baseName ());
+//              QString const & uuid = plugin->uuid ();
+//              m_plugins.insert (uuid, plugin);
+//              files.insert (uuid, filePath);
+//              break;
+//            }
+//          }
+//        }
+//      }
+//    }
 
-    // For each plugins get image and authentification files.
-    for (QMap<QString, QString>::const_iterator it = files.cbegin (), end = files.cend (); it != end; ++it)
-    {
-      QString const & uuid   = it.key ();
-      QString         file   = it.value ();
-      CPlugin*        plugin = m_plugins.value (uuid);
-      if (plugin != nullptr)
-      {
-        int index = file.lastIndexOf ('.');
-        if (index != -1)
-        {
-          file.truncate (index);
-          file += ".png";
-          if (QFile::exists (file))
-          {
-            plugin->setPixmap (file);
-          }
-          else
-          {
-            file.truncate (index);
-            file += ".jpg";
-            if (QFile::exists (file))
-            {
-              plugin->setPixmap (file);
-            }
-          }
+//    // For each plugins get image and authentification files.
+//    for (QMap<QString, QString>::const_iterator it = files.cbegin (), end = files.cend (); it != end; ++it)
+//    {
+//      QString const & uuid   = it.key ();
+//      QString         file   = it.value ();
+//      CPlugin*        plugin = m_plugins.value (uuid);
+//      if (plugin != nullptr)
+//      {
+//        int index = file.lastIndexOf ('.');
+//        if (index != -1)
+//        {
+//          file.truncate (index);
+//          file += ".png";
+//          if (QFile::exists (file))
+//          {
+//            plugin->setPixmap (file);
+//          }
+//          else
+//          {
+//            file.truncate (index);
+//            file += ".jpg";
+//            if (QFile::exists (file))
+//            {
+//              plugin->setPixmap (file);
+//            }
+//          }
 
-          file.truncate (index);
-          file += ".ids";
-          if (QFile::exists (file))
-          {
-            plugin->restoreAuth (file);
-          }
-        }
-      }
-    }
-  }
+//          file.truncate (index);
+//          file += ".ids";
+//          if (QFile::exists (file))
+//          {
+//            plugin->restoreAuth (file);
+//          }
+//        }
+//      }
+//    }
+//  }
 }
 
 QStringList CControlPoint::plugins () const

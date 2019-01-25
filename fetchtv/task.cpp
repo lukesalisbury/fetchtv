@@ -49,9 +49,35 @@ BasicInfo Task::get(QString const& serverUUID, QString id ) {
 	return info;
 }
 
+void Task::listFiles(QString const& serverUUID, QString id, QString outputPrefix ) {
+	QtUPnP::CContentDirectory cd(upnp_cp);
+	QtUPnP::CBrowseReply reply = cd.browse(serverUUID, id, QtUPnP::CContentDirectory::BrowseDirectChildren, "*",
+										0, 0,
+										"+recordedStartDateTime");
+
+	QList<QtUPnP::CDidlItem> const & didlItems = reply.items();
+	for (QtUPnP::CDidlItem const & didlItem : didlItems)
+	{
+		if ( didlItem.type() == QtUPnP::CDidlItem::StorageFolder) {
+			QString q = didlItem.title();
+			this->listFiles(serverUUID, didlItem.id(), q);
+		} else if ( didlItem.type() == QtUPnP::CDidlItem::Movie || didlItem.type() == QtUPnP::CDidlItem::VideoItem) {
+			if ( since_date <= didlItem.date() ) {
+				std::cout << "[" << didlItem.id().toInt() << "] ";
+				if ( outputPrefix != didlItem.title()) {
+					std::cout << outputPrefix.toStdString() << " - ";
+				}
+				std::cout << didlItem.title().toStdString() << " [" << didlItem.duration().toStdString() << "] "
+						  << QLocale::system().formattedDataSize(didlItem.size()).toStdString()
+						  << std::endl;
+			}
+		}
+	}
+}
+
 void Task::list(QString const& serverUUID, QString id, QString outputPrefix ) {
 	QtUPnP::CContentDirectory cd(upnp_cp);
-	QtUPnP::CBrowseReply reply = cd.browse(serverUUID, id);
+	QtUPnP::CBrowseReply reply = cd.browse(serverUUID, id, QtUPnP::CContentDirectory::BrowseDirectChildren);
 
 	QList<QtUPnP::CDidlItem> const & didlItems = reply.items();
 	for (QtUPnP::CDidlItem const & didlItem : didlItems)
@@ -64,9 +90,8 @@ void Task::list(QString const& serverUUID, QString id, QString outputPrefix ) {
 			std::cout << outputPrefix.toStdString() << "[" << didlItem.id().toInt() << "] "
 					  << didlItem.title().toStdString() << " [" << didlItem.duration().toStdString() << "] "
 					  << QLocale::system().formattedDataSize(didlItem.size()).toStdString()
+					  << didlItem.date().toString().toStdString()
 					  << std::endl;
-			//std::cout << outputPrefix.toStdString() << "[" << didlItem.protocolInfo().toStdString() << "] "
-			//		  << std::endl;
 		}
 	}
 }
@@ -94,7 +119,11 @@ void Task::retrievedContentList(QtUPnP::CDevice device) {
 	while (i != services.constEnd()) {
 		QtUPnP::CService service = i.value();
 		if ( i.key() == "urn:upnp-org:serviceId:ContentDirectory") {
-			this->list(device.uuid(),QString::number(c));
+			if ( this->has_since_date ) {
+				this->listFiles(device.uuid(),QString::number(c));
+			} else {
+				this->list(device.uuid(),QString::number(c));
+			}
 		}
 		++i;
 		c++;
@@ -104,10 +133,18 @@ void Task::retrievedContentList(QtUPnP::CDevice device) {
 void Task::newDevice( QString const & serverUUID) {
 
 	QtUPnP::CDevice device = upnp_cp->device(serverUUID);
-
 	if ( device.modelName().startsWith("Fetch")) {
-		qDebug() << "Fetch STB Found";
-		founded_devices.append(device);
+		if ( this->has_device_ip ) {
+			if ( this->requested_device == device.url().host() ) {
+				std::cout << "Fetch STB Found at " << device.url().host().toStdString() << std::endl;
+				founded_devices.append(device);
+			} else {
+				std::cout << "Fetch STB skipped at " << device.url().host().toStdString() << std::endl;
+			}
+		} else {
+			std::cout << "Fetch STB Found at " << device.url().host().toStdString() << std::endl;
+			founded_devices.append(device);
+		}
 	}
 }
 
@@ -121,11 +158,13 @@ Task::Task(QCoreApplication * a, QObject * parent) : QObject(parent) {
 
 	this->app = a;
 
-	parser.addPositionalArgument("command", "download, lastid, list, help");
-	parser.addPositionalArgument("id", "ID for download");
+	parser.addPositionalArgument("command", "download, lastid, since, list, help");
+	parser.addPositionalArgument("id/date", "ID for download or a date in YYYY-MM-DD format");
 	parser.addOptions({
-		{{"d", "directory"}, "Download into <directory>.", "directory"}
+		{{"d", "directory"}, "Download into <directory>.", "directory"},
+		{"ip", "Fetch IP Address", "ip"}
 	});
+
 	// Process the actual command line arguments given by the user
 	if ( !parser.parse(QCoreApplication::arguments()) ) {
 		std::cout << parser.helpText().toStdString() << std::endl;
@@ -144,17 +183,21 @@ Task::Task(QCoreApplication * a, QObject * parent) : QObject(parent) {
 	connect(upnp_cp, SIGNAL(newDevice(QString const &) ), this, SLOT(newDevice(QString const &) ));
 	connect(upnp_cp, SIGNAL(networkError(QString const &, QNetworkReply::NetworkError, QString const &) ), this, SLOT(networkError(QString const &, QNetworkReply::NetworkError, QString const &) ));
 
-
-
 	if ( upnp_cp->initialize() ) {
 		upnp_cp->discover();
 
 		const QStringList positionalArguments = parser.positionalArguments();
 
+		if ( parser.isSet("ip") ) {
+			this->has_device_ip = true;
+			this->requested_device = parser.value("ip");
+		}
+
 		if (positionalArguments.isEmpty()) {
 			QTimer::singleShot(scan_time, this, &Task::actionList);
 		} else {
 			QString action = positionalArguments.first();
+
 			if ( action == "download") {
 				if ( positionalArguments.size() >= 2 ) {
 					download_id = positionalArguments.at(1).toUInt();
@@ -164,6 +207,18 @@ Task::Task(QCoreApplication * a, QObject * parent) : QObject(parent) {
 				}
 			} else if ( action == "lastid") {
 				QTimer::singleShot(scan_time, this, &Task::actionLastID);
+			} else if ( action == "backup") {
+				QTimer::singleShot(scan_time, this, &Task::actionLastID);
+			} else if ( action == "since") {
+				if ( positionalArguments.size() >= 2 ) {
+					this->has_since_date = true;
+					this->since_date = QDateTime::fromString(positionalArguments.at(1), Qt::ISODate);
+					QTimer::singleShot(scan_time, this, &Task::actionSince);
+				} else {
+					QTimer::singleShot(scan_time, this, &Task::actionHelp);
+				}
+
+				QTimer::singleShot(scan_time, this, &Task::actionSince);
 			} else if ( action == "help") {
 				QTimer::singleShot(0, this, &Task::actionHelp);
 			} else {
@@ -197,6 +252,14 @@ void Task::actionLastID() {
 	emit taskCompleted();
 }
 
+void Task::actionSince() {
+	QList<QtUPnP::CDevice>::const_iterator i = founded_devices.constBegin();
+	while (i != founded_devices.constEnd()) {
+		retrievedContentList(*i);
+		i++;
+	}
+	emit taskCompleted();
+}
 
 void Task::actionDownload() {
 	if ( founded_devices.size() ) {
@@ -232,7 +295,7 @@ void Task::actionDownload() {
 						+ "/"
 						+ QByteArray::number(info.filesize + 29084);
 				//request.setRawHeader("Range", rangeHeaderValue);
-
+				this->timer.start();
 				reply = manager.get(request);
 
 				if ( reply ) {
@@ -250,9 +313,9 @@ void Task::actionDownload() {
 		} else {
 			emit taskFailed();
 		}
-} else {
-	emit taskFailed();
-}
+	} else {
+		emit taskFailed();
+	}
 }
 
 void Task::actionList() {
@@ -291,10 +354,16 @@ void Task::downloadCompleted()
 
 void Task::downloadProgress(qint64 bytesReceived, qint64 bytesTotal)
 {
+	qint64 q = 0;
+	if ( this->timer.elapsed() >= 1000)
+		q = bytesReceived / (this->timer.elapsed()/1000);
+
 	std::cout << ""
 			  << QLocale::system().formattedDataSize(bytesReceived).toStdString()
 			  << " of "
-			  << QLocale::system().formattedDataSize(bytesTotal).toStdString() << std::endl;
+			  << QLocale::system().formattedDataSize(bytesTotal).toStdString()
+			  << " at " << QLocale::system().formattedDataSize(q).toStdString()
+			  << " per second.\t\r" << std::flush;
 }
 
 void Task::downloadError(QNetworkReply::NetworkError code)

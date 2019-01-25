@@ -8,13 +8,23 @@ QT += core network
 
 TARGET = fetchtv
 TEMPLATE = app
-CONFIG += c++14 console
+CONFIG += c++14
 
 SOURCES += main.cpp \
 		   task.cpp
 
 HEADERS += task.hpp
 
+win32 {
+	CONFIG(release, debug|release) {
+		#message(Window release)
+		#LIBS += $$OUT_PWD/../qtupnp/release/libqtupnp.a
+		LIBS += -L$$OUT_PWD/../qtupnp/release/ -lqtupnp
+		CONFIG += console
+	}
+	CONFIG(debug, debug|release) {
+		#message(Window debug)
+		LIBS += -L$$OUT_PWD/../qtupnp/debug/ -lqtupnp
 
-win32:CONFIG(release, debug|release): LIBS += $$OUT_PWD/../qtupnp/release/libqtupnp.a
-else:win32:CONFIG(debug, debug|release): LIBS += $$OUT_PWD/../qtupnp/debug/libqtupnp.a
+	}
+}

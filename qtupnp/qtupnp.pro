@@ -5,10 +5,11 @@
 #-------------------------------------------------
 
 QT += core network xml
+CONFIG += c++14
 
-greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
+#greaterThan(QT_MAJOR_VERSION, 4): QT += widgets
 
-QMAKE_CXXFLAGS += -std=c++11
+#QMAKE_CXXFLAGS += -std=c++11
 
 TARGET = qtupnp
 TEMPLATE = lib
@@ -63,14 +64,15 @@ SOURCES += \
     control.cpp \
     didlitem_playlist.cpp \
     httpserver.cpp \
-    pixmapcache.cpp \
     dump.cpp \
-    plugin.cpp \
-    oauth2.cpp \
     aesencryption.cpp
 
+#    pixmapcache.cpp \
+#    plugin.cpp \
+#    oauth2.cpp \
+
 HEADERS +=\
-        upnp_global.hpp \
+	upnp_global.hpp \
     actionmanager.hpp \
     controlpoint.hpp \
     datacaller.hpp \
@@ -113,13 +115,13 @@ HEADERS +=\
     actioninfo.hpp \
     xmlhaction.hpp \
     httpserver.hpp \
-    pixmapcache.hpp \
     dump.hpp \
-    plugin.hpp \
-    oauth2.hpp \
     aesencryption.h \
     aes256.h
 
+#    pixmapcache.hpp \
+#    plugin.hpp \
+#    oauth2.hpp \
 
 USEHIDDENFILE=$$(HIDDENFILES)
 equals(USEHIDDENFILE,"1") {

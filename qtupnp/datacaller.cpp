@@ -29,6 +29,7 @@ QByteArray CDataCaller::callData (QUrl const & url, int timeout)
     if (scheme == "http" || scheme == "https")
     { // http or https request
       QNetworkRequest nreq (m_request); // Build the network request
+	  //qDebug() << "QNetworkRequest" << m_request;
       QNetworkReply*  reply = m_naMgr->get (nreq); // Send the get request and store the reply
 
       connect (reply, SIGNAL (error (QNetworkReply::NetworkError)), this, SLOT (error (QNetworkReply::NetworkError)));

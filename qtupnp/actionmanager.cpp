@@ -53,6 +53,7 @@ bool CActionManager::post (QString const & device, QUrl const & url, CActionInfo
   if (!isRunning ())
   {
     QNetworkRequest req (url);
+
     req.setPriority (QNetworkRequest::HighPriority);
      // To fix a problem with DSM6 (Synology). If User-Agent exists DSM send only the full precision
      // image not the thumbnails.
@@ -68,6 +69,7 @@ bool CActionManager::post (QString const & device, QUrl const & url, CActionInfo
     QTime time;
     time.start ();
 
+	//qDebug() << "QNetworkRequest" << url << info.message ().toUtf8 ();
     m_naMgr->setNetworkAccessible (QNetworkAccessManager::Accessible);
     QNetworkReply* reply = m_naMgr->post (req, info.message ().toUtf8 ());
     connect (reply, SIGNAL(error(QNetworkReply::NetworkError)), this, SLOT(error(QNetworkReply::NetworkError)));

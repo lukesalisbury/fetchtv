@@ -37,7 +37,9 @@ class Task : public QObject
 public:
 	Task(QCoreApplication * a, QObject * parent = nullptr);
 
-signals:
+
+
+	signals:
 	void taskCompleted();
 	void taskFailed();
 	void stepCompleted();
@@ -48,6 +50,7 @@ public slots:
 	void actionLastID();
 	void actionList();
 	void actionDownload();
+	void actionSince();
 
 	void exitSuccessfully();
 	void exitNotSoSuccessfully();
@@ -64,6 +67,7 @@ public slots:
 private:
 	BasicInfo get(QString const& serverUUID, QString id );
 	void list(QString const& serverUUID, QString id , QString outputPrefix = "");
+	void listFiles(const QString & serverUUID, QString id, QString outputPrefix = "");
 	void retrievedContentList(QtUPnP::CDevice device);
 	uint32_t retrievedSystemUpdateID(QtUPnP::CDevice device);
 
@@ -73,6 +77,7 @@ private:
 	QtUPnP::CControlPoint * upnp_cp = nullptr;
 
 	QList<QtUPnP::CDevice> founded_devices;
+	QString requested_device = "";
 	uint8_t active_steps = 0;
 	qint32 scan_time = 2000;
 	quint32 download_id = 0;
@@ -80,7 +85,10 @@ private:
 	qint64 downloaded = 0;
 	QNetworkReply * reply;
 	QTime timer;
+	QDateTime since_date;
 	bool hasFailed = false;
+	bool has_device_ip = false;
+	bool has_since_date = false;
 };
 
 #endif // TASK_HPP

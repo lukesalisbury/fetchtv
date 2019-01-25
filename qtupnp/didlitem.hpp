@@ -5,6 +5,7 @@
 #include "upnp_global.hpp"
 #include <QSharedDataPointer>
 #include <QMultiMap>
+#include <QDateTime>
 
 START_DEFINE_UPNP_NAMESPACE
 
@@ -378,7 +379,7 @@ public:
   QString genre () const;
 
   /*! Returns the date. */
-  QString date () const;
+  QDateTime date () const;
 
   /*! Returns the duration. */
   QString duration (int index = 0) const;
