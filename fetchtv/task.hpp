@@ -13,10 +13,22 @@ according to those terms.
 #include <QNetworkReply>
 #include <QCommandLineParser>
 #include <QFile>
-
+#include <QRegExp>
 
 #include "../qtupnp/controlpoint.hpp"
 #include "../qtupnp/device.hpp"
+
+enum ArgumentStringType {
+	AST_NUMBER,
+	AST_DATE,
+	AST_STRING
+};
+
+
+struct TaskAction {
+	QString type;
+	quint32 id;
+};
 
 class BasicDevice {
 public:
@@ -27,8 +39,15 @@ public:
 class BasicInfo {
 public:
 	QString title;
+	QString series;
 	QString uri;
+	QString filename;
+	QString id;
+	QDateTime date;
 	int64_t filesize = 0;
+	QString toString() {
+		return QString("%1 [%2] %3 %4 %5").arg(this->id).arg(this->series).arg(this->title).arg(this->date.toString()).arg(this->filename);
+	}
 };
 
 class Task : public QObject
@@ -37,9 +56,7 @@ class Task : public QObject
 public:
 	Task(QCoreApplication * a, QObject * parent = nullptr);
 
-
-
-	signals:
+signals:
 	void taskCompleted();
 	void taskFailed();
 	void stepCompleted();
@@ -47,10 +64,9 @@ public:
 
 public slots:
 	void actionHelp();
-	void actionLastID();
 	void actionList();
 	void actionDownload();
-	void actionSince();
+	void actionPreDownload();
 
 	void exitSuccessfully();
 	void exitNotSoSuccessfully();
@@ -64,31 +80,44 @@ public slots:
 	void newDevice( QString const & msg);
 	void networkError(QString const & deviceUUID, QNetworkReply::NetworkError errorCode, QString const & errorDesc);
 
-private:
+	private slots:
+
+
+	private:
+	BasicInfo CDidlItem2BasicInfo(QString const& serverUUID, const QtUPnP::CDidlItem & didlItem);
 	BasicInfo get(QString const& serverUUID, QString id );
+	QList<BasicInfo> buildList(const QtUPnP::CDevice & device, QString id);
 	void list(QString const& serverUUID, QString id , QString outputPrefix = "");
-	void listFiles(const QString & serverUUID, QString id, QString outputPrefix = "");
 	void retrievedContentList(QtUPnP::CDevice device);
-	uint32_t retrievedSystemUpdateID(QtUPnP::CDevice device);
+	void downloadStart(QtUPnP::CDevice, quint32 id);
+	void nextDownload();
 
 	QNetworkAccessManager manager;
 	QCoreApplication * app = nullptr;
 	QCommandLineParser parser;
 	QtUPnP::CControlPoint * upnp_cp = nullptr;
 
+	QList<QString> download_actions;
 	QList<QtUPnP::CDevice> founded_devices;
+	QList<BasicInfo> cached_info;
 	QString requested_device = "";
-	uint8_t active_steps = 0;
-	qint32 scan_time = 2000;
-	quint32 download_id = 0;
-	QFile file;
-	qint64 downloaded = 0;
+
 	QNetworkReply * reply;
 	QTime timer;
 	QDateTime since_date;
-	bool hasFailed = false;
+
+	QFile current_file;
+	qint32 scan_time = 2000;
+	qint64 downloaded = 0;
+
+	bool has_failed = false;
 	bool has_device_ip = false;
-	bool has_since_date = false;
+	bool output_as_csv = false;
+	bool resume_downloads = false;
+	bool continuing = false;
+	void (Task::*action_method)();
+
+
 };
 
 #endif // TASK_HPP
